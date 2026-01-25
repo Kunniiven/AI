@@ -3,3 +3,4 @@ node_modules/
 chats.json
 *.log
 .DS_Store
+uploads/
