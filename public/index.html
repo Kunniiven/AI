@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <!-- Build: 2026-01-25 -->
     <title>AI Chat</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -20,6 +20,15 @@
     <!-- KaTeX -->
     <style>
         /* Markdown basic styles */
+
+        .markdown-content> :first-child {
+            margin-top: 0 !important;
+        }
+
+        .markdown-content> :last-child {
+            margin-bottom: 0 !important;
+        }
+
         .markdown-content h1 {
             font-size: 1.5rem;
             font-weight: 700;
@@ -45,19 +54,19 @@
         }
 
         .markdown-content p {
-            margin: 0.5em 0;
+            margin: 0.28em 0;
         }
 
         .markdown-content ul {
             list-style: disc;
             padding-left: 1.25rem;
-            margin: 0.5em 0;
+            margin: 0.32em 0;
         }
 
         .markdown-content ol {
             list-style: decimal;
             padding-left: 1.25rem;
-            margin: 0.5em 0;
+            margin: 0.32em 0;
         }
 
         .markdown-content li {
@@ -87,7 +96,7 @@
             border-radius: 0.75rem;
             padding: 0.75rem;
             overflow-x: auto;
-            margin: 0.75rem 0;
+            margin: 0.5rem 0;
         }
 
         .markdown-content code {
@@ -101,7 +110,7 @@
         .markdown-content table {
             width: 100%;
             border-collapse: collapse;
-            margin: 0.75rem 0;
+            margin: 0.55rem 0;
         }
 
         .markdown-content th,
@@ -115,6 +124,123 @@
         .markdown-content th {
             background: rgba(248, 250, 252, 1);
         }
+
+        /* ============================
+           Layout: 禁止页面滚动
+           ============================ */
+        html,
+        body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        /* 只允许对话区域滚动 */
+        #messagesContainer {
+            overscroll-behavior: contain;
+        }
+
+        /* ============================
+           防止宽内容撑出屏幕（代码块/表格/长链接/图片/公式）
+           ============================ */
+        .markdown-content {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .markdown-content pre {
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .markdown-content code {
+            max-width: 100%;
+        }
+
+        .markdown-content table {
+            max-width: 100%;
+            display: block;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .markdown-content img,
+        .markdown-content video,
+        .markdown-content iframe {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .katex-display {
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+
+
+        /* ===== Viewport & scroll lock (mobile-friendly) ===== */
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            overscroll-behavior: none;
+            /* stop scroll chaining */
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            position: fixed;
+            inset: 0;
+        }
+
+        /* Ensure only messages container scrolls (especially on mobile) */
+        #messagesContainer {
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Prevent wide content from breaking layout */
+        .markdown-content,
+        .markdown-content * {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .markdown-content pre {
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .markdown-content code {
+            word-break: break-word;
+        }
+
+        .markdown-content table {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .katex-display {
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        img,
+        video,
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
     </style>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -124,8 +250,46 @@
     <style>
         body {
             font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+        }
+
+
+
+        html,
+        body {
+            width: 100%;
+            overflow-x: hidden;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        /* Prevent horizontal "page" scrolling caused by wide content */
+        .markdown-content pre,
+        .markdown-content code,
+        .markdown-content table {
+            max-width: 100%;
+        }
+
+        /* Tables / long code lines should scroll inside themselves */
+        .markdown-content table {
+            display: block;
+            overflow-x: auto;
+        }
+
+        /* KaTeX display math can be wider than screen */
+        .katex-display {
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        /* Mobile typography */
+        @media (max-width: 768px) {
+            body {
+                font-size: 16px;
+            }
+
+            .markdown-content {
+                font-size: 15px;
+                line-height: 1.7;
+            }
         }
 
         .custom-scrollbar::-webkit-scrollbar {
@@ -145,61 +309,32 @@
             background: rgba(100, 116, 139, .8);
         }
 
-        /* 移动端优化 */
-        @media (max-width: 768px) {
-            .custom-scrollbar::-webkit-scrollbar {
-                width: 4px;
-            }
-            
-            /* 移动端消息容器优化 */
-            #messagesInner {
-                padding-left: 1rem !important;
-                padding-right: 1rem !important;
-            }
-            
-            /* 移动端输入框优化 */
-            #messageInput {
-                font-size: 16px !important; /* 防止iOS自动缩放 */
-            }
-            
-            /* 移动端按钮优化 */
-            button, select {
-                -webkit-tap-highlight-color: transparent;
-            }
+        /* ===== Compact AI typography (ChatGPT-like) ===== */
+        .markdown-content {
+            line-height: 1.55;
         }
 
-        /* 触摸设备优化 */
-        @media (hover: none) {
-            .hover\:bg-slate-100:hover {
-                background-color: inherit;
-            }
-            .hover\:bg-slate-100:active {
-                background-color: rgb(241 245 249);
-            }
-            .hover\:bg-slate-50:hover {
-                background-color: inherit;
-            }
-            .hover\:bg-slate-50:active {
-                background-color: rgb(248 250 252);
-            }
-            .hover\:bg-slate-800:hover {
-                background-color: rgb(30 41 59);
-            }
-            .hover\:bg-slate-800:active {
-                background-color: rgb(30 41 59 / 0.9);
-            }
+        .markdown-content p {
+            margin: 0.35em 0;
         }
 
-        /* 防止移动端长按选择 */
-        button, .mobile-no-select {
-            -webkit-user-select: none;
-            user-select: none;
+        .markdown-content ul,
+        .markdown-content ol {
+            margin: 0.35em 0;
+        }
+
+        .markdown-content li {
+            margin: 0.15em 0;
+        }
+
+        .markdown-content pre {
+            margin: 0.6rem 0;
         }
     </style>
 </head>
 
-<body class="bg-slate-50">
-    <div class="h-screen flex">
+<body class="bg-slate-50 h-[100dvh] overflow-hidden overscroll-none">
+    <div class="fixed inset-0 w-full flex overflow-hidden">
 
         <!-- Sidebar (desktop) -->
         <aside class="hidden md:flex w-72 flex-col border-r bg-white">
@@ -228,31 +363,31 @@
         </aside>
 
         <!-- Main -->
-        <main class="flex-1 flex flex-col">
+        <main class="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
 
             <!-- Top bar -->
-            <div class="h-14 md:h-12 border-b bg-white flex items-center justify-between px-2 md:px-4">
-                <div class="flex items-center gap-1 md:gap-2 min-w-0 flex-1">
-                    <button id="mobileSidebarBtn" class="md:hidden p-2 rounded-lg hover:bg-slate-100 active:bg-slate-200">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="h-12 shrink-0 border-b bg-white flex items-center justify-between px-3 md:px-4">
+                <div class="flex items-center gap-2 min-w-0">
+                    <button id="mobileSidebarBtn" class="md:hidden p-2 rounded-lg hover:bg-slate-100">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </button>
 
-                    <div class="min-w-0 flex-1">
-                        <div id="chatTitle" class="text-sm md:text-base font-medium text-slate-900 truncate px-1">新对话</div>
+                    <div class="min-w-0">
+                        <div id="chatTitle" class="text-sm font-medium text-slate-900 truncate">新对话</div>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-1 md:gap-2">
+                <div class="flex items-center gap-2">
                     <select id="modelSelect"
-                        class="px-2 py-1.5 text-xs md:text-sm border border-slate-300 rounded-lg bg-white text-slate-800 max-w-[120px] md:max-w-[180px]"
+                        class="px-2 py-1.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 max-w-[180px]"
                         disabled>
                     </select>
 
-                    <button id="settingsBtn" class="p-2 rounded-lg hover:bg-slate-100 active:bg-slate-200" title="设置">
-                        <svg class="w-5 h-5 md:w-6 md:h-6 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="settingsBtn" class="p-2 rounded-lg hover:bg-slate-100" title="设置">
+                        <svg class="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
                             </path>
@@ -266,7 +401,8 @@
 
             <!-- Edit Banner -->
             <div id="editBanner" class="hidden border-b bg-amber-50 text-amber-800">
-                <div class="max-w-3xl mx-auto px-4 py-2 flex items-center justify-between gap-3">
+                <div
+                    class="w-full max-w-none md:max-w-3xl mx-auto px-3 md:px-4 py-2 flex items-center justify-between gap-3">
                     <div class="text-sm">正在编辑上一条消息，修改后发送会从这里重新生成后续回复。</div>
                     <button id="cancelEditBtn"
                         class="px-3 py-1.5 rounded-xl border border-amber-200 hover:bg-amber-100 text-sm">
@@ -276,28 +412,29 @@
             </div>
 
             <!-- Messages -->
-            <div id="messagesContainer" class="flex-1 custom-scrollbar overflow-y-auto">
-                <div class="max-w-3xl mx-auto px-3 md:px-4 py-4 md:py-6 space-y-3 md:space-y-4" id="messagesInner">
-                    <div id="emptyState" class="py-12 md:py-16 text-center text-slate-500">
-                        <div class="text-base md:text-lg font-semibold text-slate-700 mb-2">开始新对话</div>
-                        <div class="text-sm">输入消息后发送<span class="hidden md:inline">（Shift + Enter 换行）</span></div>
+            <div id="messagesContainer"
+                class="custom-scrollbar flex-1 min-h-0 overflow-x-hidden overflow-y-auto w-full overscroll-contain touch-pan-y">
+                <div class="w-full px-0 py-4 md:py-6 space-y-3 md:space-y-4" id="messagesInner">
+                    <div id="emptyState" class="py-16 text-center text-slate-500">
+                        <div class="text-lg font-semibold text-slate-700 mb-2">开始新对话</div>
+                        <div class="text-sm">输入消息后回车发送（Shift + Enter 换行）</div>
                     </div>
                 </div>
             </div>
 
             <!-- Composer -->
-            <div class="border-t border-slate-200 bg-slate-50">
-                <div class="max-w-3xl mx-auto px-3 md:px-4 pt-2 md:pt-3 pb-4 md:pb-6 space-y-2">
-                    <div class="rounded-2xl md:rounded-3xl border border-slate-200 bg-white shadow-sm p-1.5 md:p-2 space-y-2">
+            <div class="shrink-0 border-t border-slate-200 bg-slate-50 overscroll-none touch-manipulation">
+                <div class="w-full max-w-none md:max-w-3xl mx-auto px-3 md:px-4 pt-3 pb-4 md:pb-6 space-y-2">
+                    <div class="rounded-3xl border border-slate-200 bg-white shadow-sm p-2 space-y-2">
                         <div class="hidden flex flex-wrap gap-2" id="attachmentsPreview"></div>
-                        <form class="space-y-1.5 md:space-y-2" id="messageForm">
-                            <div class="flex gap-1.5 md:gap-2 items-end">
+                        <form class="space-y-2" id="messageForm">
+                            <div class="flex gap-2 items-end">
                                 <!-- file -->
                                 <label
-                                    class="shrink-0 h-11 w-11 md:h-12 md:w-12 flex items-center justify-center rounded-2xl md:rounded-3xl border border-slate-300 hover:bg-slate-50 active:bg-slate-100 cursor-pointer">
+                                    class="shrink-0 h-12 w-12 flex items-center justify-center rounded-3xl border border-slate-300 hover:bg-slate-50 cursor-pointer">
                                     <input accept="image/*,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx" class="hidden"
                                         id="fileInput" multiple="" type="file" />
-                                    <svg class="w-5 h-5 md:w-6 md:h-6 text-slate-700" fill="none" stroke="currentColor"
+                                    <svg class="w-5 h-5 text-slate-700" fill="none" stroke="currentColor"
                                         viewbox="0 0 24 24">
                                         <path
                                             d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
@@ -307,18 +444,17 @@
                                 </label>
                                 <!-- input -->
                                 <textarea
-                                    class="flex-1 resize-none rounded-2xl md:rounded-3xl border border-slate-300 px-3 md:px-4 py-2.5 md:py-3 min-h-[44px] md:min-h-[48px] text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/20"
+                                    class="flex-1 resize-none rounded-3xl border border-slate-300 px-4 py-3 min-h-[48px] text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/20"
                                     disabled="" id="messageInput" placeholder="输入消息…" rows="1"></textarea>
                                 <!-- send -->
                                 <button
-                                    class="shrink-0 h-11 md:h-12 px-3 md:px-4 py-2.5 md:py-3 rounded-2xl md:rounded-3xl bg-slate-900 text-white text-sm md:text-base hover:bg-slate-800 active:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    class="shrink-0 h-12 px-4 py-3 rounded-3xl bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
                                     disabled="" id="sendBtn" type="submit">
                                     发送
                                 </button>
                             </div>
-                            <div class="text-[10px] md:text-[11px] text-slate-500 px-1">
-                                <span class="md:hidden">点击发送</span>
-                                <span class="hidden md:inline">回车发送 · Shift+Enter 换行</span>
+                            <div class="text-[11px] text-slate-500">
+                                回车发送 · Shift+Enter 换行
                             </div>
                         </form>
                     </div>
@@ -328,31 +464,31 @@
     </div>
 
     <!-- Mobile sidebar overlay -->
-    <div id="mobileSidebarOverlay" class="fixed inset-0 bg-black/30 hidden md:hidden z-50">
-        <div class="w-80 max-w-[85vw] h-full bg-white shadow-xl">
-            <div class="p-4 flex items-center justify-between border-b">
-                <div class="text-base font-semibold">聊天历史</div>
-                <button id="closeMobileSidebarBtn" class="p-2.5 rounded-lg hover:bg-slate-100 active:bg-slate-200">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div id="mobileSidebarOverlay" class="fixed inset-0 bg-black/30 hidden md:hidden">
+        <div class="w-72 h-full bg-white shadow-xl">
+            <div class="p-3 flex items-center justify-between border-b">
+                <div class="text-sm font-semibold">聊天历史</div>
+                <button id="closeMobileSidebarBtn" class="p-2 rounded-lg hover:bg-slate-100">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
                         </path>
                     </svg>
                 </button>
             </div>
 
-            <div class="p-4">
+            <div class="p-3">
                 <button id="newChatBtnMobile"
-                    class="w-full mb-4 px-4 py-3 rounded-xl text-base bg-slate-900 text-white hover:bg-slate-800 active:bg-slate-700">
+                    class="w-full mb-3 px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">
                     新建聊天
                 </button>
-                <div id="chatListMobile" class="custom-scrollbar overflow-y-auto h-[calc(100vh-160px)] space-y-2"></div>
+                <div id="chatListMobile" class="custom-scrollbar overflow-y-auto h-[calc(100vh-140px)] space-y-2"></div>
             </div>
         </div>
     </div>
 
     <!-- Settings Modal -->
-    <div id="settingsModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-3 md:p-4 z-50">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-4 md:p-5">
+    <div id="settingsModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-5">
             <div class="flex items-center justify-between mb-3">
                 <div class="text-base font-semibold text-slate-900">对话设置</div>
                 <button id="closeSettingsBtn" class="p-2 rounded-lg hover:bg-slate-100">
@@ -438,8 +574,8 @@
 
     <!-- Scroll to bottom -->
     <button id="scrollToBottomBtn"
-        class="hidden fixed bottom-24 md:bottom-28 right-4 md:right-6 z-40 items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-2xl bg-slate-900 text-white shadow-lg hover:bg-slate-800 active:bg-slate-700">
-        <span class="text-sm md:text-base">⬇ 回到底部</span>
+        class="hidden fixed bottom-28 right-6 z-40 items-center gap-2 px-3 py-2 rounded-2xl bg-slate-900 text-white shadow-lg hover:bg-slate-800">
+        <span class="text-sm">⬇ 回到底部</span>
     </button>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>

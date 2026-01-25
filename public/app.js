@@ -415,38 +415,73 @@ function renderMessages(messages) {
 function buildMessageBubble(message) {
   const isUser = message.role === "user";
 
-  const wrap = document.createElement("div");
-  wrap.className = `flex ${isUser ? "justify-end" : "justify-start"}`;
+  // Row container
+  const row = document.createElement("div");
+  row.className = "w-full";
 
-  const box = document.createElement("div");
-  box.className = "max-w-[90%] md:max-w-[80%]";
+  // Layout:
+  // - Assistant: centered column (ChatGPT-like)
+  // - User: right-aligned bubble, not centered
+  const inner = document.createElement("div");
+  if (isUser) {
+    inner.className = "w-full px-3 md:px-6 flex justify-end";
+  } else {
+    inner.className = "w-full max-w-3xl mx-auto px-3 md:px-4";
+  }
+
+  const stack = document.createElement("div");
+  stack.className = isUser
+    ? "flex flex-col items-end gap-1"
+    : "flex flex-col items-start gap-1";
 
   const bubble = document.createElement("div");
   bubble.className = isUser
-    ? "bg-slate-900 text-white rounded-2xl px-4 py-3"
-    : "bg-white border border-slate-200 text-slate-900 rounded-2xl px-4 py-3 shadow-sm";
+    ? "bg-slate-900 text-white rounded-2xl px-4 py-1 w-fit max-w-full overflow-visible text-[15px] md:text-base leading-snug whitespace-pre-wrap break-words"
+    : "text-slate-900 w-full py-0.5 text-[15px] md:text-base leading-[1.55] whitespace-pre-wrap break-words";
 
   // content
   let html = "";
   let reasoningHtml = "";
   if (Array.isArray(message.content)) {
     // 支持 input_text / input_image（来自 Responses）
+    const pieces = [];
+
     for (const part of message.content) {
       if (part.type === "input_text" || part.type === "text") {
-        html += `<div class="whitespace-pre-wrap break-words text-sm md:text-base mb-2">${escapeHtml(part.text || "")}</div>`;
+        // ✅ 用户消息：用纯文本渲染，避免 markdown 段落 margin 把气泡撑高
+        const t = escapeHtml(part.text || "");
+        pieces.push(
+          `<div class="whitespace-pre-wrap break-words text-[15px] md:text-base leading-snug">${t}</div>`,
+        );
       }
+
       if (part.type === "input_image") {
-        html += `<img src="${escapeHtml(part.image_url)}" class="max-w-full rounded-xl mb-2" alt="image" />`;
+        pieces.push(
+          `<img src="${escapeHtml(part.image_url)}" class="block max-w-full h-auto rounded-xl" alt="image" />`,
+        );
       }
+
       if (part.type === "image_url") {
         const url = part.image_url?.url || "";
-        html += `<img src="${escapeHtml(url)}" class="max-w-full rounded-xl mb-2" alt="image" />`;
+        pieces.push(
+          `<img src="${escapeHtml(url)}" class="block max-w-full h-auto rounded-xl" alt="image" />`,
+        );
       }
     }
+
+    html = `<div class="space-y-2">${pieces.join("")}</div>`;
   } else {
-    html = `<div class="markdown-content text-sm md:text-base whitespace-pre-wrap break-words">${formatMarkdownWithMath(
-      message.content || "",
-    )}</div>`;
+    if (isUser) {
+      // ✅ 用户：纯文本（更像 ChatGPT 的用户气泡）
+      html = `<div class="whitespace-pre-wrap break-words text-[15px] md:text-base leading-snug">${escapeHtml(
+        message.content || "",
+      )}</div>`;
+    } else {
+      // ✅ AI：Markdown + 数学公式
+      html = `<div class="markdown-content text-[15px] md:text-base whitespace-pre-wrap break-words">${formatMarkdownWithMath(
+        message.content || "",
+      )}</div>`;
+    }
   }
 
   // reasoning summary (show above answer, ChatGPT-like)
@@ -455,9 +490,7 @@ function buildMessageBubble(message) {
       <details class="mb-3">
         <summary class="text-xs text-slate-500 cursor-pointer select-none">思考摘要</summary>
         <div class="mt-2 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-2">
-          <div class="reasoning-markdown markdown-content break-words">${formatMarkdownWithMath(
-            normalizeReasoningMarkdown(message.reasoningSummary),
-          )}</div>
+          ${escapeHtml(message.reasoningSummary).replace(/\n/g, "<br/>")}
         </div>
       </details>
     `;
@@ -480,7 +513,7 @@ function buildMessageBubble(message) {
       html += `<div class="mt-2 space-y-1">`;
       for (const att of files) {
         if (att.mimetype?.startsWith("image/")) {
-          html += `<img src="${escapeHtml(att.url)}" class="max-w-xs rounded-xl border border-slate-200" alt="${escapeHtml(
+          html += `<img src="${escapeHtml(att.url)}" class="block max-w-full h-auto rounded-xl border border-slate-200" alt="${escapeHtml(
             att.originalname,
           )}" />`;
         } else {
@@ -498,15 +531,16 @@ function buildMessageBubble(message) {
   }
 
   bubble.innerHTML = `${reasoningHtml}${html}`;
-  box.appendChild(bubble);
+  stack.appendChild(bubble);
 
   const meta = document.createElement("div");
-  meta.className = `text-[11px] mt-1 ${isUser ? "text-right text-slate-500" : "text-left text-slate-500"}`;
+  meta.className = `text-[11px] ${isUser ? "text-right text-slate-500" : "text-left text-slate-500"}`;
   meta.textContent = formatTime(message.timestamp || new Date().toISOString());
-  box.appendChild(meta);
+  stack.appendChild(meta);
 
-  wrap.appendChild(box);
-  return wrap;
+  inner.appendChild(stack);
+  row.appendChild(inner);
+  return row;
 }
 
 // ======================
@@ -715,19 +749,21 @@ async function sendMessage(content) {
 }
 
 function createStreamingAssistantBubble() {
+  // Streaming assistant reply should match final layout:
+  // centered column + no bubble (ChatGPT-like)
   const wrap = document.createElement("div");
-  wrap.className = "flex justify-start";
+  wrap.className = "w-full";
 
   const box = document.createElement("div");
-  box.className = "max-w-[90%] md:max-w-[80%]";
+  box.className = "w-full max-w-3xl mx-auto px-3 md:px-4";
 
   const bubble = document.createElement("div");
   bubble.className =
-    "bg-white border border-slate-200 text-slate-900 rounded-2xl px-4 py-3 shadow-sm";
+    "text-slate-900 w-full py-0.5 text-[15px] md:text-base leading-[1.55] whitespace-pre-wrap break-words";
 
   // Thinking indicator (ChatGPT-like feedback)
   const statusEl = document.createElement("div");
-  statusEl.className = "flex items-center gap-2 text-xs text-slate-500 mb-2";
+  statusEl.className = "flex items-center gap-2 text-xs text-slate-500 ";
   statusEl.innerHTML = `
     <svg class="w-3.5 h-3.5 animate-spin text-slate-400" viewBox="0 0 24 24">
       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
@@ -748,7 +784,7 @@ function createStreamingAssistantBubble() {
   thinkingWrap.appendChild(thinkingEl);
 
   const textEl = document.createElement("div");
-  textEl.className = "text-sm md:text-base break-words";
+  textEl.className = "text-[15px] md:text-base break-words";
   textEl.innerHTML = "";
 
   // Order: status -> reasoning -> answer
