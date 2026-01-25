@@ -1,5 +1,52 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+<style>
+    /* ==========================================================
+     Force view mode:
+     - html.force-desktop : 强制启用桌面布局（即使屏幕很窄）
+     - html.force-mobile  : 强制启用移动布局（即使屏幕很宽）
+     ========================================================== */
+
+    /* 强制桌面：让所有 md:flex 直接生效，md:hidden 直接失效 */
+    html.force-desktop .md\:flex {
+        display: flex !important;
+    }
+
+    html.force-desktop .md\:hidden {
+        display: none !important;
+    }
+
+    /* 强制移动：隐藏所有 md:flex（桌面侧栏），并显示 md:hidden（比如移动按钮）
+     注意：别把本来就带 .hidden 的元素强行显示出来（例如你的遮罩层 overlay 默认有 hidden） */
+    html.force-mobile .md\:flex {
+        display: none !important;
+    }
+
+    html.force-mobile .md\:hidden:not(.hidden) {
+        display: block !important;
+    }
+</style>
+
+<script>
+    // 读取 cookie view=mobile/desktop/auto，并应用到 html class
+    (function () {
+        function getCookie(name) {
+            const m = document.cookie.match(new RegExp("(?:^|;\\s*)" + name + "=([^;]+)"));
+            return m ? decodeURIComponent(m[1]) : null;
+        }
+
+        let view = (getCookie("view") || "auto").toLowerCase();
+
+        // 如果还没 cookie 或 auto，就用 UA 再判一次（防止极端情况下 cookie 未及时写入）
+        if (view === "auto" || !view) {
+            const ua = navigator.userAgent.toLowerCase();
+            view = /android|iphone|ipod|ipad|mobile|windows phone/.test(ua) ? "mobile" : "desktop";
+        }
+
+        if (view === "desktop") document.documentElement.classList.add("force-desktop");
+        if (view === "mobile") document.documentElement.classList.add("force-mobile");
+    })();
+</script>
 
 <head>
     <meta charset="UTF-8" />
