@@ -15,64 +15,6 @@ const PORT = process.env.PORT || 3000;
 // ========== Middleware ==========
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
-// ========== ✅ Device View Mode (mobile/desktop/auto) ==========
-
-// 简单解析 cookie（不需要额外装 cookie-parser）
-function getCookie(req, name) {
-  const raw = req.headers.cookie || "";
-  const parts = raw.split(";").map((s) => s.trim());
-  for (const p of parts) {
-    if (!p) continue;
-    const idx = p.indexOf("=");
-    if (idx === -1) continue;
-    const k = p.slice(0, idx).trim();
-    const v = p.slice(idx + 1).trim();
-    if (k === name) return decodeURIComponent(v);
-  }
-  return null;
-}
-
-function setCookie(res, name, value, maxAgeSeconds = 3600 * 24 * 365) {
-  // 注意：不要 HttpOnly，否则前端 JS 读不到（我们要用 JS 做“强制布局”）
-  res.setHeader(
-    "Set-Cookie",
-    `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax`,
-  );
-}
-
-function isMobileUA(ua) {
-  const s = (ua || "").toLowerCase();
-  return /android|iphone|ipod|ipad|mobile|windows phone|iemobile|blackberry|opera mini/.test(
-    s,
-  );
-}
-
-// ✅ 自动设置 view cookie：手机=mobile，电脑=desktop
-app.use((req, res, next) => {
-  // 只处理首页（你也可以扩大到所有 html 请求）
-  if (req.method === "GET" && req.path === "/") {
-    const view = (getCookie(req, "view") || "auto").toLowerCase();
-
-    if (!view || view === "auto") {
-      const ua = req.headers["user-agent"] || "";
-      const autoView = isMobileUA(ua) ? "mobile" : "desktop";
-      setCookie(res, "view", autoView);
-    }
-  }
-  next();
-});
-
-// ✅ 手动切换：/view/mobile  /view/desktop  /view/auto
-app.get("/view/:mode", (req, res) => {
-  const mode = (req.params.mode || "").toLowerCase();
-  if (!["mobile", "desktop", "auto"].includes(mode)) {
-    return res.status(400).send("view mode must be mobile / desktop / auto");
-  }
-  setCookie(res, "view", mode);
-  // 切换完回首页
-  res.redirect("/");
-});
-
 app.use(express.static("public"));
 app.use("/uploads", express.static("uploads"));
 
