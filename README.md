@@ -6,7 +6,7 @@
 
 - ? **现代设计** - 采用玻璃态设计，渐变背景动画
 - ? **多对话管理** - 创建、切换和删除多个聊天会话
-- ? **持久化存储** - 自动保存所有聊天记录到本地文件
+- ? **MongoDB 存储** - 使用 MongoDB 数据库持久化存储所有聊天记录
 - ? **安全配置** - 后端存储 API 密钥，前端不暴露
 - ? **响应式设计** - 完美适配桌面和移动设备
 - ? **无障碍支持** - 支持键盘导航和动画偏好设置
@@ -16,6 +16,7 @@
 ### 前置要求
 
 - Node.js 14+ 
+- MongoDB 4.4+ (本地安装或 MongoDB Atlas 云服务)
 - OpenAI API Key ([获取地址](https://platform.openai.com/api-keys))
 
 ### 安装步骤
@@ -35,9 +36,25 @@ npm install
 # 复制环境变量模板
 copy .env.example .env
 
-# 编辑 .env 文件，添加你的 OpenAI API Key
+# 编辑 .env 文件，添加你的配置
 # OPENAI_API_KEY=sk-your-api-key-here
+# MONGODB_URI=mongodb://localhost:27017/aigui
 ```
+
+**MongoDB 配置选项：**
+- **本地 MongoDB**: `mongodb://localhost:27017/aigui`
+- **MongoDB Atlas**: `mongodb+srv://username:password@cluster.mongodb.net/aigui?retryWrites=true&w=majority`
+
+**如何安装本地 MongoDB：**
+- Windows: 访问 [MongoDB 下载页](https://www.mongodb.com/try/download/community)
+- macOS: `brew install mongodb-community`
+- Linux: 参考 [MongoDB 官方文档](https://docs.mongodb.com/manual/installation/)
+
+**使用 MongoDB Atlas (云服务，推荐)：**
+1. 访问 [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. 创建免费集群
+3. 获取连接字符串
+4. 添加到 `.env` 文件的 `MONGODB_URI`
 
 4. **启动服务器**
 ```bash
@@ -79,21 +96,28 @@ AIGUI/
 ├── public/              # 前端文件
 │   ├── index.html      # 主页面
 │   └── app.js          # 前端逻辑
+├── uploads/            # 文件上传目录 (自动生成)
 ├── server.js           # 后端服务器
-├── chats.json          # 聊天记录存储 (自动生成)
 ├── .env                # 环境变量配置
 ├── .env.example        # 环境变量模板
 ├── package.json        # 项目依赖
 └── README.md          # 项目文档
 ```
 
+**数据存储**: 使用 MongoDB 数据库
+- 数据库名: `aigui`
+- 集合名: `chats`
+
 ## ?? 技术栈
 
 ### 后端
 - **Node.js** - 运行时环境
 - **Express** - Web 框架
+- **MongoDB** - NoSQL 数据库
+- **Mongoose** - MongoDB ODM (对象文档映射)
 - **OpenAI SDK** - OpenAI API 客户端
 - **dotenv** - 环境变量管理
+- **Multer** - 文件上传处理
 
 ### 前端
 - **HTML5** - 页面结构
@@ -121,8 +145,18 @@ AIGUI/
 # OpenAI API 密钥
 OPENAI_API_KEY=sk-your-api-key-here
 
+# MongoDB 连接字符串
+MONGODB_URI=mongodb://localhost:27017/aigui
+
+# OpenAI Store (启用聊天历史续写功能)
+OPENAI_STORE=1
+
 # 服务器端口 (可选，默认 3000)
 PORT=3000
+
+# 代理配置 (可选)
+# HTTP_PROXY=http://127.0.0.1:7897
+# HTTPS_PROXY=http://127.0.0.1:7897
 ```
 
 ### API 配置
@@ -169,6 +203,22 @@ Body: { "message": "Hello", "chatId": "123" }
 
 ## ? 故障排除
 
+### MongoDB 连接失败
+```bash
+# 确保 MongoDB 服务正在运行
+# Windows (以管理员身份运行):
+net start MongoDB
+
+# macOS/Linux:
+sudo systemctl start mongod
+# 或
+brew services start mongodb-community
+
+# 检查连接字符串是否正确
+# 本地: mongodb://localhost:27017/aigui
+# Atlas: mongodb+srv://...
+```
+
 ### 端口被占用
 ```bash
 # 修改 .env 文件中的 PORT 值
@@ -182,8 +232,16 @@ PORT=3001
 
 ### 无法连接服务器
 - 确认 Node.js 已正确安装
+- 确认 MongoDB 服务正在运行
 - 检查是否已运行 `npm install`
 - 查看终端是否有错误信息
+
+### 数据迁移
+如果你之前使用的是 `chats.json` 文件存储，需要迁移数据：
+```bash
+# 可以使用 MongoDB Compass 或命令行工具导入数据
+# 或者联系开发者获取迁移脚本
+```
 
 ## ? 许可证
 
@@ -192,9 +250,10 @@ MIT License
 ## ? 致谢
 
 - [OpenAI](https://openai.com/) - 提供强大的 AI 能力
+- [MongoDB](https://www.mongodb.com/) - 灵活的 NoSQL 数据库
 - [Tailwind CSS](https://tailwindcss.com/) - 优秀的 CSS 框架
 - [Google Fonts](https://fonts.google.com/) - 免费字体资源
 
 ---
 
-**提示**: 首次使用请确保已配置 OpenAI API Key，否则无法发送消息。
+**提示**: 首次使用请确保已配置 OpenAI API Key 和 MongoDB 连接，否则无法正常使用。
