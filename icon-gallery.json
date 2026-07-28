@@ -1,0 +1,10 @@
+{
+  "name": "AI Icons",
+  "description": "Quantumult X AI service icons",
+  "icons": [
+    {
+      "name": "Claude",
+      "url": "https://raw.githubusercontent.com/Kunniiven/AI/main/Claude.png"
+    }
+  ]
+}
