@@ -2,12 +2,17 @@
 #!desc = 中国大陆使用 iRingo（彩云分钟降水 + 中国 AQI）；HK/MO/TW/其他地区的实际 WeatherKit 天气响应保持 Apple 原始数据。
 #!author = Based on NSRingo/WeatherKit
 #!homepage = https://github.com/NSRingo/WeatherKit
-#!version = 3.2.0-cnonly.4
+#!version = 3.2.0-cnonly.5
 #!arguments = Weather.Replace:"CN",Weather.Provider:"ColorfulClouds",NextHour.Provider:"ColorfulClouds",AirQuality.Current.Index.Replace:"EU.EAQI",AirQuality.Current.Index.Provider:"Calculate",AirQuality.Calculate.Algorithm:"WAQI_InstantCast_CN",API.ColorfulClouds.Token:"",API.QWeather.Host:"devapi.qweather.com",API.QWeather.Token:"",API.WAQI.Token:"",Storage:"Argument",LogLevel:"WARN"
 #!arguments-desc = Weather.Replace: 天气替换范围（固定建议 CN）\nWeather.Provider: 天气数据源\nNextHour.Provider: 未来一小时降水数据源\nAirQuality.Current.Index.Replace: 将 Apple 的 EU.EAQI 替换为中国 AQI\nAirQuality.Calculate.Algorithm: 中国 AQI 算法\nAPI.*: 可选 API 参数\nStorage: 配置来源\nLogLevel: 日志等级
 
 [Rule]
-AND,((DOMAIN,weatherkit.apple.com),(PROTOCOL,QUIC)),REJECT-DROP
+# iOS 26 在中国大陆可能优先经 tether.edge.apple / Apple QUIC 代理取天气。
+# 使用 iRingo 官方同类规则强制回退到 weatherkit.apple.com 的 HTTPS/TCP，HTTP 脚本才能执行。
+DOMAIN,weather-analytics-events.apple.com,REJECT-DROP
+DOMAIN-SUFFIX,tthr.apple.com,REJECT-DROP,extended-matching
+DOMAIN,tether.edge.apple,REJECT-DROP,extended-matching
+AND,((OR,((IP-ASN,714,no-resolve),(IP-ASN,6185,no-resolve))),(PROTOCOL,QUIC)),REJECT-DROP
 
 [Script]
 # availability 保留 Apple 原有 capability，并补齐 iRingo 所需能力。
