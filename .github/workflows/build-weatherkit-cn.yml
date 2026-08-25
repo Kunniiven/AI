@@ -24,18 +24,23 @@ jobs:
             https://github.com/NSRingo/WeatherKit/releases/download/v3.2.0/response.bundle.js \
             -o surge/weatherkit-cn-response.bundle.js
 
-      - name: Show next-hour injection context
+      - name: Patch empty Apple next-hour placeholder
         shell: python
         run: |
           from pathlib import Path
-          s = Path("surge/weatherkit-cn-response.bundle.js").read_text()
-          marker = "InjectForecastNextHour"
-          idx = s.find(marker)
-          if idx < 0:
-              raise SystemExit("InjectForecastNextHour marker not found")
-          print(s[max(0, idx - 1200): idx + 2200])
+          p = Path("surge/weatherkit-cn-response.bundle.js")
+          s = p.read_text()
+          old = 'if(e.info("☑️ InjectForecastNextHour"),t)return e.info("✅ InjectForecastNextHour"),t;'
+          new = 'if(e.info("☑️ InjectForecastNextHour"),t&&Array.isArray(t.minutes)&&t.minutes.length>0)return e.info("✅ InjectForecastNextHour"),t;'
+          count = s.count(old)
+          if count != 1:
+              raise SystemExit(f"Expected one next-hour guard, found {count}")
+          patched = s.replace(old, new, 1)
+          p.write_text(patched)
+          if new not in p.read_text():
+              raise SystemExit("Patched next-hour guard verification failed")
 
-      - name: Commit downloaded bundle
+      - name: Commit patched bundle
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -44,5 +49,5 @@ jobs:
             echo "No bundle changes"
             exit 0
           fi
-          git commit -m "Vendor WeatherKit v3.2.0 response bundle"
+          git commit -m "Patch CN next-hour placeholder fallback"
           git push
