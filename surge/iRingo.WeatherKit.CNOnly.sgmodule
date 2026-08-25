@@ -2,12 +2,11 @@
 #!desc = 中国大陆使用 iRingo（彩云分钟降水 + 中国 AQI + 实验性降水地图）；HK/MO/TW/其他地区保持 Apple 原始天气/地图请求。
 #!author = Based on NSRingo/WeatherKit
 #!homepage = https://github.com/NSRingo/WeatherKit
-#!version = 3.2.0-cnonly.8
+#!version = 3.2.0-cnonly.9
 #!arguments = Weather.Replace:"CN",Weather.Provider:"ColorfulClouds",NextHour.Provider:"ColorfulClouds",AirQuality.Current.Index.Replace:"EU.EAQI",AirQuality.Current.Index.Provider:"Calculate",AirQuality.Calculate.Algorithm:"WAQI_InstantCast_CN",API.ColorfulClouds.Token:"",API.QWeather.Host:"devapi.qweather.com",API.QWeather.Token:"",API.WAQI.Token:"",Storage:"Argument",LogLevel:"WARN"
 #!arguments-desc = Weather.Replace: 天气替换范围（固定建议 CN）\nWeather.Provider: 天气数据源\nNextHour.Provider: 未来一小时降水数据源\nAirQuality.Current.Index.Replace: 将 Apple 的 EU.EAQI 替换为中国 AQI\nAirQuality.Calculate.Algorithm: 中国 AQI 算法\nAPI.*: 可选 API 参数\nStorage: 配置来源\nLogLevel: 日志等级
 
 [Rule]
-# iOS 26 的 WeatherKit/Weather Map 可能优先走 Apple QUIC；HTTP 脚本只能在回退 HTTPS 后处理。
 DOMAIN,weather-analytics-events.apple.com,REJECT-DROP
 DOMAIN-SUFFIX,tthr.apple.com,REJECT-DROP,extended-matching
 DOMAIN,tether.edge.apple,REJECT-DROP,extended-matching
@@ -18,15 +17,15 @@ AND,((OR,((IP-ASN,714,no-resolve),(IP-ASN,6185,no-resolve))),(PROTOCOL,QUIC)),RE
 # availability：只在实际地区为 CN 时补 weatherMaps、forecastNextHour 等能力；HK/MO/TW/其他地区保留 Apple 原始 capability。
 🌤 WeatherKit.api.v1.availability.response.CN = type=http-response, pattern="^https?:\/\/weatherkit\.apple\.com\/api\/v1\/availability\/", requires-body=1, engine=webview, script-path=https://raw.githubusercontent.com/Kunniiven/AI/main/surge/weatherkit-cn-availability.js
 
-# 请求阶段：仅当实际地区为 CN 时，强制把 forecastNextHour 加入 dataSets。
-🌤 WeatherKit.api.v2.weather.request.CN = type=http-request, pattern="^https?:\/\/weatherkit\.apple\.com\/api\/v2\/weather\/", engine=webview, script-path=https://raw.githubusercontent.com/Kunniiven/AI/main/surge/weatherkit-cn-request.js
+# 请求阶段：记录当前 WeatherKit 目标国家；仅 CN 强制加入 forecastNextHour。
+🌤 WeatherKit.api.v2.weather.request.CN = type=http-request, pattern="^https?:\/\/weatherkit\.apple\.com\/api\/v2\/weather\/", engine=webview, script-path=https://raw.githubusercontent.com/Kunniiven/AI/main/surge/weatherkit-cn-request.js?v=9
 
 # 响应阶段：真正的天气、空气质量、分钟降水数据只对 CN 执行 iRingo。
 🌤 WeatherKit.api.v2.weather.response.CN = type=http-response, pattern="^https?:\/\/weatherkit\.apple\.com\/api\/v2\/weather\/(?:[^#]*[?&]country=[Cc][Nn](?:&|$)|(?![^#]*[?&]country=)[^\/?#]*-[Cc][Nn]\/)", requires-body=1, binary-body-mode=1, engine=webview, script-path=https://github.com/NSRingo/WeatherKit/releases/download/v3.2.0/response.bundle.js, argument=Weather.Replace="{{{Weather.Replace}}}"&Weather.Provider="{{{Weather.Provider}}}"&NextHour.Provider="{{{NextHour.Provider}}}"&AirQuality.Current.Index.Replace="{{{AirQuality.Current.Index.Replace}}}"&AirQuality.Current.Index.Provider="{{{AirQuality.Current.Index.Provider}}}"&AirQuality.Calculate.Algorithm="{{{AirQuality.Calculate.Algorithm}}}"&API.ColorfulClouds.Token="{{{API.ColorfulClouds.Token}}}"&API.QWeather.Host="{{{API.QWeather.Host}}}"&API.QWeather.Token="{{{API.QWeather.Token}}}"&API.WAQI.Token="{{{API.WAQI.Token}}}"&Storage="{{{Storage}}}"&LogLevel="{{{LogLevel}}}"
 
-# iOS 26 Weather Map：仅处理大陆目标(country=CN)的降水雷达/逐帧预报图层。
-# URL 不改；仅把 GeoCountryCode/geocountrycode 请求头改为 US，降低破坏 HHMAC 授权的风险。
-🌧 WeatherMap2.precipitation.request.CN = type=http-request, pattern="^https?:\/\/weather-map2\.apple\.com\/v1\/mapOverlay\/(?:precipitationRadarMap|precipitationForecastByFrameTime)(?:\?|$)", engine=webview, script-path=https://raw.githubusercontent.com/Kunniiven/AI/main/surge/weather-map2-cn-unlock.js?v=8
+# iOS 26 Weather Map：所有 mapOverlay 请求都会经过脚本；带 country 的图层只用于记录目标国家，
+# 真正修改只发生在大陆目标的 precipitationRadarMap / precipitationForecastByFrameTime。
+🌧 WeatherMap2.mapOverlay.request = type=http-request, pattern="^https?:\/\/weather-map2\.apple\.com\/v1\/mapOverlay\/", engine=webview, script-path=https://raw.githubusercontent.com/Kunniiven/AI/main/surge/weather-map2-cn-unlock.js?v=9
 
 [MITM]
 hostname = %APPEND% weatherkit.apple.com, weather-map2.apple.com
