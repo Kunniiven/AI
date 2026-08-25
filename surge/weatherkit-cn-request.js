@@ -1,4 +1,5 @@
-// Force mainland China WeatherKit requests to include forecastNextHour.
+// Force mainland China WeatherKit requests to include the datasets that iRingo
+// needs to synthesize Chinese AQI and next-hour precipitation.
 // Query country has priority over locale, so HK/MO/TW are never treated as CN
 // just because the UI language/locale is Chinese.
 
@@ -16,7 +17,9 @@ if (url.hostname === "weatherkit.apple.com" && url.pathname.startsWith("/api/v2/
         .map(item => item.trim())
         .filter(Boolean);
 
-    if (!dataSets.includes("forecastNextHour")) dataSets.push("forecastNextHour");
+    for (const required of ["airQuality", "forecastNextHour"]) {
+        if (!dataSets.includes(required)) dataSets.push(required);
+    }
     url.searchParams.set("dataSets", dataSets.join(","));
 
     if (!queryCountry) url.searchParams.set("country", "CN");
