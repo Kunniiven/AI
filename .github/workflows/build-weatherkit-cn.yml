@@ -1,0 +1,75 @@
+name: Build WeatherKit CN response bundle
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/build-weatherkit-cn.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+
+      - name: Checkout upstream WeatherKit v3.2.0
+        uses: actions/checkout@v4
+        with:
+          repository: NSRingo/WeatherKit
+          ref: v3.2.0
+          path: upstream-weatherkit
+
+      - name: Patch CN next-hour fallback
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path("upstream-weatherkit/src/process/Response.mjs")
+          s = p.read_text()
+          old = '''    if (forecastNextHour) {
+              Console.info("✅ InjectForecastNextHour");
+              return forecastNextHour;
+          }
+          '''
+          new = '''    if (forecastNextHour && Array.isArray(forecastNextHour.minutes) && forecastNextHour.minutes.length > 0) {
+              Console.info("✅ InjectForecastNextHour");
+              return forecastNextHour;
+          }
+          '''
+          if old not in s:
+              raise SystemExit("Expected InjectForecastNextHour block not found")
+          p.write_text(s.replace(old, new, 1))
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: upstream-weatherkit/package-lock.json
+
+      - name: Install and build
+        working-directory: upstream-weatherkit
+        run: |
+          npm ci
+          npm run build
+
+      - name: Copy bundle
+        run: |
+          mkdir -p surge
+          cp upstream-weatherkit/dist/response.bundle.js surge/weatherkit-cn-response.bundle.js
+
+      - name: Commit generated bundle
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add surge/weatherkit-cn-response.bundle.js
+          if git diff --cached --quiet; then
+            echo "No bundle changes"
+            exit 0
+          fi
+          git commit -m "Build CN WeatherKit response bundle"
+          git push
