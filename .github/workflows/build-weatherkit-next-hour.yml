@@ -1,0 +1,73 @@
+name: Build WeatherKit next-hour fallback bundle
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/build-weatherkit-next-hour.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+
+      - name: Checkout WeatherKit v3.2.0
+        uses: actions/checkout@v4
+        with:
+          repository: NSRingo/WeatherKit
+          ref: v3.2.0
+          path: upstream
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: upstream/package-lock.json
+
+      - name: Patch response pipeline to next-hour only
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('upstream/src/process/Response.mjs')
+          s = p.read_text()
+          old = 'const parameters = parseWeatherKitURL(url);'
+          new = '''const parameters = parseWeatherKitURL(url);
+                                // Fallback bundle: decode and rewrite only forecastNextHour.
+                                // Every other WeatherKit product remains byte-for-byte Apple data.
+                                parameters.dataSets = parameters.dataSets.filter(dataSet => dataSet === "forecastNextHour");'''
+          count = s.count(old)
+          if count != 1:
+              raise SystemExit(f'Expected one parseWeatherKitURL site, found {count}')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+
+      - name: Build bundle
+        run: |
+          cd upstream
+          npm ci
+          npm run build
+
+      - name: Install next-hour-only bundle
+        run: |
+          cp upstream/dist/response.bundle.js surge/weatherkit-next-hour-response.bundle.js
+          grep -q 'Version: 3.2.0' surge/weatherkit-next-hour-response.bundle.js
+
+      - name: Commit bundle
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add surge/weatherkit-next-hour-response.bundle.js
+          if git diff --cached --quiet; then
+            echo "No bundle changes"
+            exit 0
+          fi
+          git commit -m "Build next-hour-only WeatherKit fallback bundle"
+          git push
