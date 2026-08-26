@@ -1,8 +1,8 @@
 #!name =  iRingo: 🌤 WeatherKit (CN Only)
-#!desc = 中国大陆使用 iRingo v3.3.1（彩云分钟降水 + 中国 AQI）；兼容 iOS 26.6 AQI 2604 标尺，并修复空 forecastNextHour、泛化“有降水”误判 CLEAR、微量降水低于 Apple 显示阈值的问题。weather-map/weather-map2 保持 Apple 原生 QUIC，HK/MO/TW/其他地区天气数据保持 Apple 原始。
+#!desc = 中国大陆使用 iRingo v3.3.1（彩云分钟降水 + 中国 AQI）；CN 的第三方 NextHour 数据源强制生效，并兼容 iOS 26.6 AQI 2604 标尺、泛化“有降水”和微量降水显示阈值。weather-map/weather-map2 保持 Apple 原生 QUIC，HK/MO/TW/其他地区天气数据保持 Apple 原始。
 #!author = Based on NSRingo/WeatherKit
 #!homepage = https://github.com/NSRingo/WeatherKit
-#!version = 3.3.1-cnonly.17
+#!version = 3.3.1-cnonly.18
 #!arguments = Weather.Replace:"CN",Weather.Provider:"ColorfulClouds",NextHour.Provider:"ColorfulClouds",AirQuality.Current.Pollutants.Provider:"ColorfulClouds",AirQuality.Current.Index.Replace:"EU.EAQI",AirQuality.Current.Index.Provider:"Calculate",AirQuality.Calculate.Algorithm:"WAQI_InstantCast_CN",API.ColorfulClouds.Token:"",API.QWeather.Host:"devapi.qweather.com",API.QWeather.Token:"",API.WAQI.Token:"",Storage:"Argument",LogLevel:"WARN"
 #!arguments-desc = Weather.Replace: 天气替换范围（固定建议 CN）\nWeather.Provider: 天气数据源\nNextHour.Provider: 未来一小时降水数据源\nAirQuality.Current.Pollutants.Provider: 大陆缺失空气质量时的污染物数据源\nAirQuality.Current.Index.Replace: 将 Apple 的 EU.EAQI（含 .2604 等版本）替换为中国 AQI\nAirQuality.Calculate.Algorithm: 中国 AQI 算法\nAPI.*: 可选 API 参数\nStorage: 配置来源\nLogLevel: 日志等级
 
@@ -22,13 +22,13 @@ AND,((OR,((IP-ASN,714,no-resolve),(IP-ASN,6185,no-resolve))),(PROTOCOL,QUIC)),RE
 🌤 WeatherKit.api.v1.availability.response.CN = type=http-response, pattern="^https?:\/\/weatherkit\.apple\.com\/api\/v1\/availability\/", requires-body=1, engine=webview, script-path=https://raw.githubusercontent.com/Kunniiven/AI/main/surge/weatherkit-cn-availability.js
 
 # iOS 26.6 的 AQI 标尺使用 .2604 等版本后缀；仅规范化中国 HJ6332012 标尺，不碰 HK/MO/TW 的原生标尺。
-🌤 WeatherKit.api.v1.airQualityScale.request.CN = type=http-request, pattern="^https?:\/\/weatherkit\.apple\.com\/api\/v1\/airQualityScale\/[^\/?#]+\/HJ6332012(?:\.[0-9]+)?(?:[?#]|$)", engine=webview, script-path=https://raw.githubusercontent.com/Kunniiven/AI/main/surge/weatherkit-cn-aqi-scale.js?v=17
+🌤 WeatherKit.api.v1.airQualityScale.request.CN = type=http-request, pattern="^https?:\/\/weatherkit\.apple\.com\/api\/v1\/airQualityScale\/[^\/?#]+\/HJ6332012(?:\.[0-9]+)?(?:[?#]|$)", engine=webview, script-path=https://raw.githubusercontent.com/Kunniiven/AI/main/surge/weatherkit-cn-aqi-scale.js?v=18
 
 # 请求阶段：仅 country=CN（或无 country 时 locale=-CN）强制加入 airQuality + forecastNextHour。
-🌤 WeatherKit.api.v2.weather.request.CN = type=http-request, pattern="^https?:\/\/weatherkit\.apple\.com\/api\/v2\/weather\/", engine=webview, script-path=https://raw.githubusercontent.com/Kunniiven/AI/main/surge/weatherkit-cn-request.js?v=17
+🌤 WeatherKit.api.v2.weather.request.CN = type=http-request, pattern="^https?:\/\/weatherkit\.apple\.com\/api\/v2\/weather\/", engine=webview, script-path=https://raw.githubusercontent.com/Kunniiven/AI/main/surge/weatherkit-cn-request.js?v=18
 
-# 响应阶段：只有 CN 进入定制 v3.3.1 bundle。补丁：空 minutes 走彩云；“有降水”按雨处理；真实轻降水最低映射到 Apple 可显示的 0.101。
-🌤 WeatherKit.api.v2.weather.response.CN = type=http-response, pattern="^https?:\/\/weatherkit\.apple\.com\/api\/v2\/weather\/(?:[^#]*[?&]country=[Cc][Nn](?:&|$)|(?![^#]*[?&]country=)[^\/?#]*-[Cc][Nn]\/)", requires-body=1, binary-body-mode=1, engine=webview, script-path=https://raw.githubusercontent.com/Kunniiven/AI/main/surge/weatherkit-cn-response.bundle.js?v=17, argument=Weather.Replace="{{{Weather.Replace}}}"&Weather.Provider="{{{Weather.Provider}}}"&NextHour.Provider="{{{NextHour.Provider}}}"&AirQuality.Current.Pollutants.Provider="{{{AirQuality.Current.Pollutants.Provider}}}"&AirQuality.Current.Index.Replace="{{{AirQuality.Current.Index.Replace}}}"&AirQuality.Current.Index.Provider="{{{AirQuality.Current.Index.Provider}}}"&AirQuality.Calculate.Algorithm="{{{AirQuality.Calculate.Algorithm}}}"&API.ColorfulClouds.Token="{{{API.ColorfulClouds.Token}}}"&API.QWeather.Host="{{{API.QWeather.Host}}}"&API.QWeather.Token="{{{API.QWeather.Token}}}"&API.WAQI.Token="{{{API.WAQI.Token}}}"&Storage="{{{Storage}}}"&LogLevel="{{{LogLevel}}}"
+# 响应阶段：只有 CN 进入定制 v3.3.1 bundle。ColorfulClouds/QWeather 被选中时不再被 Apple 的 forecastNextHour 占位/零值对象短路；“有降水”按雨处理；真实轻降水最低映射到 Apple 可显示的 0.101。
+🌤 WeatherKit.api.v2.weather.response.CN = type=http-response, pattern="^https?:\/\/weatherkit\.apple\.com\/api\/v2\/weather\/(?:[^#]*[?&]country=[Cc][Nn](?:&|$)|(?![^#]*[?&]country=)[^\/?#]*-[Cc][Nn]\/)", requires-body=1, binary-body-mode=1, engine=webview, script-path=https://raw.githubusercontent.com/Kunniiven/AI/main/surge/weatherkit-cn-response.bundle.js?v=18, argument=Weather.Replace="{{{Weather.Replace}}}"&Weather.Provider="{{{Weather.Provider}}}"&NextHour.Provider="{{{NextHour.Provider}}}"&AirQuality.Current.Pollutants.Provider="{{{AirQuality.Current.Pollutants.Provider}}}"&AirQuality.Current.Index.Replace="{{{AirQuality.Current.Index.Replace}}}"&AirQuality.Current.Index.Provider="{{{AirQuality.Current.Index.Provider}}}"&AirQuality.Calculate.Algorithm="{{{AirQuality.Calculate.Algorithm}}}"&API.ColorfulClouds.Token="{{{API.ColorfulClouds.Token}}}"&API.QWeather.Host="{{{API.QWeather.Host}}}"&API.QWeather.Token="{{{API.QWeather.Token}}}"&API.WAQI.Token="{{{API.WAQI.Token}}}"&Storage="{{{Storage}}}"&LogLevel="{{{LogLevel}}}"
 
 [MITM]
 hostname = %APPEND% weatherkit.apple.com
