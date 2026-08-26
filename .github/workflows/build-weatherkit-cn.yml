@@ -57,15 +57,17 @@ jobs:
           s = s[:m.start()] + replacement + s[m.end():]
 
           # 2) Caiyun can describe real precipitation as simply "有降水". The
-          # upstream keyword table otherwise falls back to CLEAR. Treat this
-          # generic Chinese description as rain when minute precipitation exists.
-          precip_type = re.compile(r'(PrecipitationType:\{[^{}]{0,320}?雨:"RAIN",)(snow:"SNOW")')
-          matches = list(precip_type.finditer(s))
-          if len(matches) != 1:
-              i = s.find('PrecipitationType')
-              print('PrecipitationType snippet:', s[max(0, i - 100):i + 650])
-              raise SystemExit(f'Expected one precipitation type table, found {len(matches)}')
-          s = precip_type.sub(r'\1降水:"RAIN",\2', s, count=1)
+          # minified bundle quotes Chinese object keys, so patch the unique
+          # precipitation-type sequence directly.
+          old = '"雨":"RAIN",snow:"SNOW"'
+          new = '"雨":"RAIN","降水":"RAIN",snow:"SNOW"'
+          count = s.count(old)
+          if count != 1:
+              positions = [m.start() for m in re.finditer('雨夹雪', s)]
+              for pos in positions[:8]:
+                  print('Rain-keyword snippet:', s[max(0, pos - 180):pos + 420])
+              raise SystemExit(f'Expected one precipitation keyword sequence, found {count}')
+          s = s.replace(old, new, 1)
 
           # 3) Apple hides next-hour samples below ~0.1 perceived intensity.
           # Preserve zero/no-precipitation behavior, but floor actual LIGHT-range
@@ -86,7 +88,7 @@ jobs:
           checks = [
               'Version: 3.3.1',
               'Array.isArray(',
-              '降水:"RAIN"',
+              '"降水":"RAIN"',
               'Math.max(.101,Math.min(1,',
           ]
           missing = [item for item in checks if item not in s]
