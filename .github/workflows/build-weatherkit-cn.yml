@@ -36,9 +36,10 @@ jobs:
           if 'Version: 3.3.1' not in s:
               raise SystemExit('Downloaded bundle is not WeatherKit v3.3.1')
 
-          # 1) Apple may return an allocated forecastNextHour object with no useful
-          # minute samples. Treat only a non-empty minutes array as native data;
-          # otherwise continue to ColorfulClouds.Minutely().
+          # 1) The upstream bundle returns any Apple forecastNextHour object before
+          # consulting NextHour.Provider. In this CN-only bundle, only preserve
+          # Apple next-hour data when WeatherKit is explicitly selected. With
+          # ColorfulClouds/QWeather selected, always fetch the configured provider.
           guard = re.compile(
               r'if\(([A-Za-z_$][\w$]*)\.info\("☑️ InjectForecastNextHour"\),([A-Za-z_$][\w$]*)\)return\s+\1\.info\("✅ InjectForecastNextHour"\),\2;'
           )
@@ -51,14 +52,13 @@ jobs:
           logger, obj = m.group(1), m.group(2)
           replacement = (
               f'if({logger}.info("☑️ InjectForecastNextHour"),'
-              f'{obj}&&Array.isArray({obj}.minutes)&&{obj}.minutes.length>0)'
+              f'{obj}&&"WeatherKit"===globalThis.$argument?.NextHour?.Provider)'
               f'return {logger}.info("✅ InjectForecastNextHour"),{obj};'
           )
           s = s[:m.start()] + replacement + s[m.end():]
 
           # 2) Caiyun can describe real precipitation as simply "有降水". The
-          # minified bundle quotes Chinese object keys, so patch the unique
-          # precipitation-type sequence directly.
+          # upstream keyword table otherwise falls back to CLEAR.
           old = '"雨":"RAIN",snow:"SNOW"'
           new = '"雨":"RAIN","降水":"RAIN",snow:"SNOW"'
           count = s.count(old)
@@ -87,7 +87,7 @@ jobs:
 
           checks = [
               'Version: 3.3.1',
-              'Array.isArray(',
+              '"WeatherKit"===globalThis.$argument?.NextHour?.Provider',
               '"降水":"RAIN"',
               'Math.max(.101,Math.min(1,',
           ]
