@@ -17,28 +17,83 @@ jobs:
       - name: Checkout target repo
         uses: actions/checkout@v4
 
-      - name: Download official WeatherKit v3.2.0 response bundle
+      - name: Download official WeatherKit v3.3.1 response bundle
         run: |
           mkdir -p surge
           curl -fL --retry 3 \
-            https://github.com/NSRingo/WeatherKit/releases/download/v3.2.0/response.bundle.js \
+            https://github.com/NSRingo/WeatherKit/releases/download/v3.3.1/response.bundle.js \
             -o surge/weatherkit-cn-response.bundle.js
 
-      - name: Patch empty Apple next-hour placeholder
+      - name: Patch CN next-hour behavior
         shell: python
         run: |
           from pathlib import Path
+          import re
+
           p = Path("surge/weatherkit-cn-response.bundle.js")
           s = p.read_text()
-          old = 'if(e.info("☑️ InjectForecastNextHour"),t)return e.info("✅ InjectForecastNextHour"),t;'
-          new = 'if(e.info("☑️ InjectForecastNextHour"),t&&Array.isArray(t.minutes)&&t.minutes.length>0)return e.info("✅ InjectForecastNextHour"),t;'
-          count = s.count(old)
-          if count != 1:
-              raise SystemExit(f"Expected one next-hour guard, found {count}")
-          patched = s.replace(old, new, 1)
-          p.write_text(patched)
-          if new not in p.read_text():
-              raise SystemExit("Patched next-hour guard verification failed")
+
+          if 'Version: 3.3.1' not in s:
+              raise SystemExit('Downloaded bundle is not WeatherKit v3.3.1')
+
+          # 1) Apple may return an allocated forecastNextHour object with no useful
+          # minute samples. Treat only a non-empty minutes array as native data;
+          # otherwise continue to ColorfulClouds.Minutely().
+          guard = re.compile(
+              r'if\(([A-Za-z_$][\w$]*)\.info\("☑️ InjectForecastNextHour"\),([A-Za-z_$][\w$]*)\)return\s+\1\.info\("✅ InjectForecastNextHour"\),\2;'
+          )
+          matches = list(guard.finditer(s))
+          if len(matches) != 1:
+              i = s.find('☑️ InjectForecastNextHour')
+              print('NextHour marker snippet:', s[max(0, i - 160):i + 500])
+              raise SystemExit(f'Expected one next-hour guard, found {len(matches)}')
+          m = matches[0]
+          logger, obj = m.group(1), m.group(2)
+          replacement = (
+              f'if({logger}.info("☑️ InjectForecastNextHour"),'
+              f'{obj}&&Array.isArray({obj}.minutes)&&{obj}.minutes.length>0)'
+              f'return {logger}.info("✅ InjectForecastNextHour"),{obj};'
+          )
+          s = s[:m.start()] + replacement + s[m.end():]
+
+          # 2) Caiyun can describe real precipitation as simply "有降水". The
+          # upstream keyword table otherwise falls back to CLEAR. Treat this
+          # generic Chinese description as rain when minute precipitation exists.
+          precip_type = re.compile(r'(PrecipitationType:\{[^{}]{0,320}?雨:"RAIN",)(snow:"SNOW")')
+          matches = list(precip_type.finditer(s))
+          if len(matches) != 1:
+              i = s.find('PrecipitationType')
+              print('PrecipitationType snippet:', s[max(0, i - 100):i + 650])
+              raise SystemExit(f'Expected one precipitation type table, found {len(matches)}')
+          s = precip_type.sub(r'\1降水:"RAIN",\2', s, count=1)
+
+          # 3) Apple hides next-hour samples below ~0.1 perceived intensity.
+          # Preserve zero/no-precipitation behavior, but floor actual LIGHT-range
+          # precipitation at 0.101 so it survives the existing > 0.1 display path.
+          light = re.compile(
+              r'Math\.min\(1,\(([A-Za-z_$][\w$]*)-([A-Za-z_$][\w$]*)\.LIGHT\[0\]\)/\(\2\.LIGHT\[1\]-\2\.LIGHT\[0\]\)\)'
+          )
+          matches = list(light.finditer(s))
+          if len(matches) != 1:
+              positions = [m.start() for m in re.finditer(r'LIGHT\[0\]', s)]
+              for pos in positions[:8]:
+                  print('LIGHT snippet:', s[max(0, pos - 180):pos + 280])
+              raise SystemExit(f'Expected one LIGHT interpolation, found {len(matches)}')
+          s = light.sub(r'Math.max(.101,Math.min(1,(\1-\2.LIGHT[0])/(\2.LIGHT[1]-\2.LIGHT[0])))', s, count=1)
+
+          p.write_text(s)
+
+          checks = [
+              'Version: 3.3.1',
+              'Array.isArray(',
+              '降水:"RAIN"',
+              'Math.max(.101,Math.min(1,',
+          ]
+          missing = [item for item in checks if item not in s]
+          if missing:
+              raise SystemExit(f'Patch verification failed: missing {missing}')
+
+          print('WeatherKit v3.3.1 CN patches applied successfully')
 
       - name: Commit patched bundle
         run: |
@@ -49,5 +104,5 @@ jobs:
             echo "No bundle changes"
             exit 0
           fi
-          git commit -m "Patch CN next-hour placeholder fallback"
+          git commit -m "Update CN WeatherKit response bundle to v3.3.1"
           git push
