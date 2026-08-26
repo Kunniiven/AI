@@ -1,4 +1,4 @@
-name: Build WeatherKit CN response bundle
+name: Build WeatherKit custom bundles
 
 on:
   workflow_dispatch:
@@ -36,17 +36,11 @@ jobs:
           if 'Version: 3.3.1' not in s:
               raise SystemExit('Downloaded bundle is not WeatherKit v3.3.1')
 
-          # 1) The upstream bundle returns any Apple forecastNextHour object before
-          # consulting NextHour.Provider. In this CN-only bundle, only preserve
-          # Apple next-hour data when WeatherKit is explicitly selected. With
-          # ColorfulClouds/QWeather selected, always fetch the configured provider.
           guard = re.compile(
               r'if\(([A-Za-z_$][\w$]*)\.info\("☑️ InjectForecastNextHour"\),([A-Za-z_$][\w$]*)\)return\s+\1\.info\("✅ InjectForecastNextHour"\),\2;'
           )
           matches = list(guard.finditer(s))
           if len(matches) != 1:
-              i = s.find('☑️ InjectForecastNextHour')
-              print('NextHour marker snippet:', s[max(0, i - 160):i + 500])
               raise SystemExit(f'Expected one next-hour guard, found {len(matches)}')
           m = matches[0]
           logger, obj = m.group(1), m.group(2)
@@ -57,54 +51,60 @@ jobs:
           )
           s = s[:m.start()] + replacement + s[m.end():]
 
-          # 2) Caiyun can describe real precipitation as simply "有降水". The
-          # upstream keyword table otherwise falls back to CLEAR.
           old = '"雨":"RAIN",snow:"SNOW"'
           new = '"雨":"RAIN","降水":"RAIN",snow:"SNOW"'
-          count = s.count(old)
-          if count != 1:
-              positions = [m.start() for m in re.finditer('雨夹雪', s)]
-              for pos in positions[:8]:
-                  print('Rain-keyword snippet:', s[max(0, pos - 180):pos + 420])
-              raise SystemExit(f'Expected one precipitation keyword sequence, found {count}')
+          if s.count(old) != 1:
+              raise SystemExit('Expected one precipitation keyword sequence')
           s = s.replace(old, new, 1)
 
-          # 3) Apple hides next-hour samples below ~0.1 perceived intensity.
-          # Preserve zero/no-precipitation behavior, but floor actual LIGHT-range
-          # precipitation at 0.101 so it survives the existing > 0.1 display path.
           light = re.compile(
               r'Math\.min\(1,\(([A-Za-z_$][\w$]*)-([A-Za-z_$][\w$]*)\.LIGHT\[0\]\)/\(\2\.LIGHT\[1\]-\2\.LIGHT\[0\]\)\)'
           )
-          matches = list(light.finditer(s))
-          if len(matches) != 1:
-              positions = [m.start() for m in re.finditer(r'LIGHT\[0\]', s)]
-              for pos in positions[:8]:
-                  print('LIGHT snippet:', s[max(0, pos - 180):pos + 280])
-              raise SystemExit(f'Expected one LIGHT interpolation, found {len(matches)}')
+          if len(list(light.finditer(s))) != 1:
+              raise SystemExit('Expected one LIGHT interpolation')
           s = light.sub(r'Math.max(.101,Math.min(1,(\1-\2.LIGHT[0])/(\2.LIGHT[1]-\2.LIGHT[0])))', s, count=1)
-
           p.write_text(s)
 
-          checks = [
-              'Version: 3.3.1',
-              '"WeatherKit"===globalThis.$argument?.NextHour?.Provider',
-              '"降水":"RAIN"',
-              'Math.max(.101,Math.min(1,',
-          ]
-          missing = [item for item in checks if item not in s]
-          if missing:
-              raise SystemExit(f'Patch verification failed: missing {missing}')
+      - name: Checkout WeatherKit v3.2.0 source
+        uses: actions/checkout@v4
+        with:
+          repository: NSRingo/WeatherKit
+          ref: v3.2.0
+          path: weatherkit-v320
 
-          print('WeatherKit v3.3.1 CN patches applied successfully')
+      - name: Build next-hour-only v3.2.0 response bundle
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
 
-      - name: Commit patched bundle
+          p = Path('weatherkit-v320/src/process/Response.mjs')
+          s = p.read_text()
+          old = '''parameters.dataSets.map(async dataSet => {
+                                        switch (dataSet) {'''
+          new = '''parameters.dataSets.map(async dataSet => {
+                                        // Non-CN fallback bundle: preserve every Apple dataset except forecastNextHour.
+                                        if (dataSet !== "forecastNextHour") return;
+                                        switch (dataSet) {'''
+          if s.count(old) != 1:
+              raise SystemExit(f'Expected one dataset dispatch block, found {s.count(old)}')
+          p.write_text(s.replace(old, new, 1))
+          PY
+          cd weatherkit-v320
+          npm install --no-audit --no-fund
+          npm run build
+          cd ..
+          cp weatherkit-v320/dist/response.bundle.js surge/weatherkit-next-hour-only.bundle.js
+          grep -q 'Version: 3.2.0' surge/weatherkit-next-hour-only.bundle.js
+
+      - name: Commit custom bundles
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add surge/weatherkit-cn-response.bundle.js
+          git add surge/weatherkit-cn-response.bundle.js surge/weatherkit-next-hour-only.bundle.js
           if git diff --cached --quiet; then
             echo "No bundle changes"
             exit 0
           fi
-          git commit -m "Update CN WeatherKit response bundle to v3.3.1"
+          git commit -m "Update WeatherKit custom response bundles"
           git push
