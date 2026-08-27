@@ -1,6 +1,6 @@
-// Add forecastNextHour availability only where ColorfulClouds Minutely is supported.
-// CN is handled by the existing CN availability path. HK/MO/TW are intentionally
-// left native to preserve the user's original behavior for those regions.
+// Add forecastNextHour availability where ColorfulClouds Minutely is supported.
+// CN is handled by the existing CN path. All other Caiyun-supported regions,
+// including HK/MO/TW, can receive a next-hour fallback when Apple does not.
 
 const url = new URL($request.url);
 const segments = url.pathname.split("/").filter(Boolean);
@@ -11,6 +11,7 @@ const queryCountry = (url.searchParams.get("country") || "").toUpperCase();
 const country = queryCountry || localeCountry;
 
 const colorfulCloudsMinutelyCountries = new Set([
+    "HK", "MO", "TW",
     "IT", "LT", "MT", "FR", "SK", "NO", "BY", "IS", "CZ", "SI", "DE", "ES", "UA", "DK", "PL", "FI", "SE", "HR", "RU", "RO", "PT", "EE", "RS", "AT", "GR", "HU",
     "FJ", "GU", "MH", "NC", "TR", "BH", "SA", "ID", "IR", "SG", "OM", "PH", "IN", "KH", "CY", "MY", "VN", "KW", "TH", "KR", "KP", "CA", "BS", "KY", "MX", "PA",
     "MQ", "CU", "BM", "PR", "CW", "GP", "NI", "BR", "GF", "CO", "GY", "PY", "AR",
