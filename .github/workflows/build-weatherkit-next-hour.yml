@@ -57,14 +57,15 @@ jobs:
 
       - name: Install next-hour-only bundle
         run: |
-          cp upstream/dist/response.bundle.js surge/weatherkit-next-hour-response.bundle.js
-          grep -q 'Version: 3.2.0' surge/weatherkit-next-hour-response.bundle.js
+          mkdir -p "surge/weather kit"
+          cp upstream/dist/response.bundle.js "surge/weather kit/weatherkit-next-hour-response.bundle.js"
+          grep -q 'Version: 3.2.0' "surge/weather kit/weatherkit-next-hour-response.bundle.js"
 
       - name: Commit bundle
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add surge/weatherkit-next-hour-response.bundle.js
+          git add "surge/weather kit/weatherkit-next-hour-response.bundle.js"
           if git diff --cached --quiet; then
             echo "No bundle changes"
             exit 0

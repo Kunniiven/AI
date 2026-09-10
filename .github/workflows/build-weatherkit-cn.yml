@@ -19,10 +19,10 @@ jobs:
 
       - name: Download official WeatherKit v3.3.1 response bundle
         run: |
-          mkdir -p surge
+          mkdir -p "surge/weather kit"
           curl -fL --retry 3 \
             https://github.com/NSRingo/WeatherKit/releases/download/v3.3.1/response.bundle.js \
-            -o surge/weatherkit-cn-response.bundle.js
+            -o "surge/weather kit/weatherkit-cn-response.bundle.js"
 
       - name: Patch CN next-hour behavior
         shell: python
@@ -30,7 +30,7 @@ jobs:
           from pathlib import Path
           import re
 
-          p = Path("surge/weatherkit-cn-response.bundle.js")
+          p = Path("surge/weather kit/weatherkit-cn-response.bundle.js")
           s = p.read_text()
 
           if 'Version: 3.3.1' not in s:
@@ -94,14 +94,14 @@ jobs:
           npm install --no-audit --no-fund
           npm run build
           cd ..
-          cp weatherkit-v320/dist/response.bundle.js surge/weatherkit-next-hour-only.bundle.js
-          grep -q 'Version: 3.2.0' surge/weatherkit-next-hour-only.bundle.js
+          cp weatherkit-v320/dist/response.bundle.js "surge/weather kit/weatherkit-next-hour-only.bundle.js"
+          grep -q 'Version: 3.2.0' "surge/weather kit/weatherkit-next-hour-only.bundle.js"
 
       - name: Commit custom bundles
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add surge/weatherkit-cn-response.bundle.js surge/weatherkit-next-hour-only.bundle.js
+          git add "surge/weather kit/weatherkit-cn-response.bundle.js" "surge/weather kit/weatherkit-next-hour-only.bundle.js"
           if git diff --cached --quiet; then
             echo "No bundle changes"
             exit 0
